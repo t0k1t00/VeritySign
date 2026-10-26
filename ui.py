@@ -141,3 +141,33 @@ def show_result(r, key="r"):
                        icon=":material/download:", use_container_width=True)
     d2.download_button("HTML report", to_html(r), "verification_report.html", key=key + "h",
                        icon=":material/download:", use_container_width=True)
+
+
+RULE_BADGE = {"PASS": ("Passed", "ok", "check_circle"), "FAIL": ("Failed", "err", "cancel"),
+              "WARN": ("Warning", "warn", "warning"), "N/A": ("Not applicable", "neutral", "remove")}
+DECISION = {"ACCEPT": ("ok", "Accepted", "verified"), "ACCEPT_WITH_WARNINGS": ("warn", "Accepted with warnings", "warning"),
+            "REJECT": ("err", "Rejected", "gpp_bad")}
+
+
+def rule_badge(state):
+    t, tone, ic = RULE_BADGE[state]
+    return badge(t, tone, ic)
+
+
+def policy_panel(d):
+    kind, label, ic = DECISION[d.decision]
+    verdict(kind, f"Policy decision: {d.policy}", label, d.summary, ic)
+    st.write("")
+    table(["Rule", "Outcome", "Detail"], [[esc(o.rule), rule_badge(o.state), esc(o.detail)] for o in d.outcomes])
+    st.caption("A policy adds restrictions after the cryptographic check. It can never turn an invalid signature into a valid one, "
+               "and a locally trusted key is not a verified real-world identity.")
+
+
+def check_badge(state):
+    return {"pass": badge("Pass", "ok", "check_circle"), "fail": badge("Fail", "err", "cancel"),
+            "info": badge("Info", "neutral", "info")}[state]
+
+
+def decision_badge(decision):
+    tone, label, _ = DECISION[decision]
+    return badge(label, tone, {"ok": "check_circle", "warn": "warning", "err": "cancel"}[tone])

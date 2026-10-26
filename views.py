@@ -5,13 +5,32 @@ from datetime import datetime
 import streamlit as st
 
 import ui
-from verity import errors as E, keys, trust
+from verity import audit, errors as E, evidence, keys, policy, pqc_lab, trust
+from verity.report import to_json
 from verity.signer import sign_document
 from verity.verifier import verify_document
 
 
 def read(f):
     return f.getvalue() if f is not None else None
+
+
+def audit_event(kind, r, pol=None, dec=None):
+    """Record a hash-linked audit event (digest and fingerprint only). Never blocks the user flow."""
+    try:
+        audit.append_event(kind, r.doc_sha256 or None, r.status, r.alg, r.key_fingerprint,
+                           pol, dec.decision if dec else None)
+    except (OSError, ValueError):
+        st.warning("Audit log could not be written. Check the Audit Trail page.", icon=":material/warning:")
+
+
+def policy_picker(key):
+    names = {v["name"]: k for k, v in policy.BUILTIN.items()}
+    up = st.session_state.get("custom_policy")
+    options = list(names) + ([up["name"] + " (custom)"] if up else [])
+    choice = st.selectbox("Verification policy", options, key=key,
+                          help="Applied after the cryptographic check. See the Policies page for each rule.")
+    return up if up and choice.endswith("(custom)") else policy.BUILTIN[names[choice]]
 
 
 def log(r):
@@ -102,19 +121,24 @@ def verify():
     st.caption(f"Up to {E.MAX_DOC_BYTES // 1024 // 1024} MB. Files are processed in memory only. "
                "This verifies VeritySign signatures over file bytes, not signatures embedded in PDFs.")
     missing = [n for n, f in [("document", doc), ("signature", sig), ("public key", pub)] if f is None]
+    pol = policy_picker("verify_policy")
     if st.button("Verify signature", type="primary", icon=":material/verified_user:", disabled=bool(missing)):
         with st.status("Verifying", expanded=False) as s:
             s.update(label="Hashing document (SHA-256) and checking signature")
             r = verify_document(read(doc), read(sig), read(pub), doc.name)
             s.update(label="Verification complete", state="complete")
         log(r)
-        st.session_state.last = r
+        d = policy.evaluate(pol, r)
+        audit_event("verify", r, pol["name"], d)
+        st.session_state.last = (r, d)
     if missing:
         st.caption("Waiting for: " + ", ".join(missing) + ".")
     if "last" in st.session_state:
         st.write("")
-        r = st.session_state.last
+        r, d = st.session_state.last
         show_result(r)
+        st.markdown("#### Policy evaluation")
+        ui.policy_panel(d)
         if r.signature_valid and not r.signer_trusted:
             with st.expander("Pin this key as trusted", icon=":material/push_pin:"):
                 label = st.text_input("Label (required)", placeholder="e.g. Alice Smith")
@@ -152,7 +176,11 @@ def studio():
             st.error("Generate or upload a private key first.", icon=":material/error:")
         else:
             try:
-                st.session_state.vsig = (sign_document(read(doc), pk, doc.name), doc.name)
+                vs = sign_document(read(doc), pk, doc.name)
+                st.session_state.vsig = (vs, doc.name)
+                import json as _json
+                rec = _json.loads(vs)
+                audit.append_event("sign", rec["doc_sha256"], "SIGNED", rec["alg"], rec["key_fingerprint"])
             except Exception as e:
                 st.error(f"Could not sign: {e}", icon=":material/error:")
     if "vsig" in st.session_state:

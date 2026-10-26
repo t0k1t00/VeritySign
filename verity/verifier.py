@@ -29,6 +29,7 @@ class VerificationResult:
     signer_trusted: bool = False
     trust_label: Optional[str] = None
     signed_at_claimed: Optional[str] = None
+    format_version: Optional[int] = None
     verified_at: str = ""
     notes: list = field(default_factory=list)
 
@@ -66,15 +67,34 @@ def _parse_sig(sig_bytes):
 
 def verify_document(doc: bytes, sig_bytes: Optional[bytes], pubkey_pem: Optional[bytes],
                     doc_name: str = "document", trust_path=None) -> VerificationResult:
-    if doc is not None and len(doc) > E.MAX_DOC_BYTES or \
-            (sig_bytes and len(sig_bytes) > E.MAX_SIG_BYTES) or \
-            (pubkey_pem and len(pubkey_pem) > E.MAX_KEY_BYTES):
+    if doc is not None and len(doc) > E.MAX_DOC_BYTES or             (sig_bytes and len(sig_bytes) > E.MAX_SIG_BYTES) or             (pubkey_pem and len(pubkey_pem) > E.MAX_KEY_BYTES):
         return _fail(E.TOO_LARGE, doc_name=doc_name)
     if not doc:
         return _fail(E.EMPTY_INPUT, doc_name=doc_name)
+    return _verify_digest(hashlib.sha256(doc).digest(), len(doc), sig_bytes, pubkey_pem, doc_name, trust_path)
 
-    digest = hashlib.sha256(doc).digest()
-    base = dict(doc_name=doc_name, doc_sha256=digest.hex(), doc_size=len(doc))
+
+def verify_digest_only(digest_hex: str, size: int, sig_bytes: Optional[bytes], pubkey_pem: Optional[bytes],
+                       doc_name: str = "document", trust_path=None) -> VerificationResult:
+    """Check the signature against a claimed digest and size WITHOUT the document bytes.
+
+    Proves only that the key holder signed that digest. The caller must bind a real
+    document to the digest (by hashing it) before relying on the result.
+    """
+    try:
+        digest = bytes.fromhex(digest_hex)
+        if len(digest) != 32 or not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return _fail(E.MALFORMED_SIGNATURE, doc_name=doc_name)
+    r = _verify_digest(digest, size, sig_bytes, pubkey_pem, doc_name, trust_path)
+    r.notes.append("Document bytes were not examined: only the digest recorded in the evidence was checked.")
+    r.integrity_ok = None
+    return r
+
+
+def _verify_digest(digest: bytes, size: int, sig_bytes, pubkey_pem, doc_name, trust_path) -> VerificationResult:
+    base = dict(doc_name=doc_name, doc_sha256=digest.hex(), doc_size=size)
 
     if not sig_bytes:
         return _fail(E.MALFORMED_SIGNATURE, **base)
@@ -82,7 +102,7 @@ def verify_document(doc: bytes, sig_bytes: Optional[bytes], pubkey_pem: Optional
         rec, sig = _parse_sig(sig_bytes)
     except ValueError as e:
         return _fail(str(e), **base)
-    base.update(alg=rec["alg"], claimed_sha256=rec["doc_sha256"],
+    base.update(alg=rec["alg"], claimed_sha256=rec["doc_sha256"], format_version=rec["version"],
                 integrity_ok=(rec["doc_sha256"] == digest.hex()),
                 signed_at_claimed=rec.get("signed_at"))
 
@@ -96,7 +116,7 @@ def verify_document(doc: bytes, sig_bytes: Optional[bytes], pubkey_pem: Optional
     base["key_fingerprint"] = fp
 
     # Message is rebuilt from the RECOMPUTED digest, never the claimed one.
-    message = build_message(ALG, digest, len(doc))
+    message = build_message(ALG, digest, size)
     try:
         pub.verify(sig, message)
     except InvalidSignature:
