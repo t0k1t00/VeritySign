@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization as S
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -36,8 +36,12 @@ def algorithms():
         for name, cls, cat in [("ML-DSA-44", "MLDSA44PrivateKey", 2), ("ML-DSA-65", "MLDSA65PrivateKey", 3),
                                ("ML-DSA-87", "MLDSA87PrivateKey", 5)]:
             if hasattr(mldsa, cls):
-                algs[name] = (getattr(mldsa, cls), f"NIST FIPS 204 (security category {cat})",
-                              "Lattice-based post-quantum signature. Private key shown in 32-byte seed form.")
+                try:
+                    getattr(mldsa, cls).generate()  # probe runtime backend support
+                    algs[name] = (getattr(mldsa, cls), f"NIST FIPS 204 (security category {cat})",
+                                  "Lattice-based post-quantum signature. Private key shown in 32-byte seed form.")
+                except UnsupportedAlgorithm:
+                    pass
     return algs
 
 
