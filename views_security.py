@@ -223,8 +223,12 @@ def crypto_lab():
                 unsafe_allow_html=True)
     algs = pqc_lab.algorithms()
     if len(algs) == 1:
-        ui.card(ui.empty("block", "ML-DSA unavailable", "The installed cryptography library does not provide ML-DSA. Upgrade it to run this lab."))
-        return
+        st.info(
+            "\U0001f512 ML-DSA is not supported by the installed OpenSSL backend on this machine. "
+            "The benchmark below runs Ed25519 only. "
+            "To enable ML-DSA, upgrade to OpenSSL ≥ 3.3 and reinstall the `cryptography` package.",
+            icon="ℹ️",
+        )
     trials = st.slider("Trials per operation", 5, 100, 20)
     if st.button("Run benchmark", type="primary", icon=":material/speed:"):
         with st.status("Measuring", expanded=False) as s:
