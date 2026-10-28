@@ -297,8 +297,9 @@ Full design notes and threat model: [docs/SECURITY_FEATURES.md](docs/SECURITY_FE
   <tr>
     <td align="center"><a href="https://github.com/aadarshpp"><b>Aadarsh P P</b></a><br/>@aadarshpp</td>
     <td align="center"><a href="https://github.com/Abhinerd"><b>Abhinav</b></a><br/>@Abhinerd</td>
-    <td align="center"><a href="https://github.com/L11cif3r"><b>L11cif3r</b></a><br/>@L11cif3r</td>
-    <td align="center"><a href="https://github.com/Rudraagh"><b>Arun Sreekumar</b></a><br/>@Rudraagh<br/><sub>invitation pending</sub></td>
+    <td align="center"><a href="https://github.com/L11cif3r"><b>Sourav S</b></a><br/>@L11cif3r</td>
+    <td align="center"><a href="https://github.com/Rudraagh"><b>Arun Sreekumar</b></a><br/>@Rudraagh</td>
+    <td align="center"><a href="https://github.com/t0k1t00"><b>Swathi B Raj</b></a><br/>@t0k1t00</td>
   </tr>
 </table>
 
