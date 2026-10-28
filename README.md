@@ -305,20 +305,7 @@ Full design notes and threat model: [docs/SECURITY_FEATURES.md](docs/SECURITY_FE
 
 ---
 
-## Reference Files
-
-- [verity/verifier.py](verity/verifier.py)
-- [verity/signer.py](verity/signer.py)
-- [verity/evidence.py](verity/evidence.py)
-- [verity/audit.py](verity/audit.py)
-- [verity/policy.py](verity/policy.py)
-- [verify_cli.py](verify_cli.py)
-- [views.py](views.py)
-- [views_security.py](views_security.py)
-
----
-
 <div align="center">
-  VeritySign &nbsp;·&nbsp; Cryptography course project<br/>
+  VeritySign &nbsp;·&nbsp; <br/>
   Built with Python, Streamlit and the cryptography library
 </div>
