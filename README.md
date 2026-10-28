@@ -31,7 +31,6 @@ Verify the bytes. Know the signer.
 - [Project Structure](#project-structure)
 - [Limitations](#limitations)
 - [Collaborators](#collaborators)
-- [Reference Files](#reference-files)
 
 ---
 
